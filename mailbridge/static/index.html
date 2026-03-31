@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#4CAF50">
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>MailBridge – Translate & Send</title>
@@ -84,6 +86,7 @@
   @media(max-width:720px){main{grid-template-columns:1fr;max-height:none;}.panel{border-right:none;border-bottom:1px solid var(--border);padding:20px 18px;}header{padding:14px 18px;}.auth-row{width:100%;}.auth-row input{min-width:140px;flex:1;}}
 </style>
 </head>
+
 <body>
 <header>
   <div class="logo">
@@ -104,6 +107,63 @@
   <!-- Register form removed - Google Sign-In handles registration -->
 
 </header>
+
+<!-- PWA Download Banner -->
+<div id="pwaBanner" style="
+  display:none;
+  position:fixed;
+  top:0;
+  left:0;
+  right:0;
+  background:linear-gradient(135deg,#2dd4a0,#1a9e74);
+  color:white;
+  padding:12px 28px;
+  text-align:center;
+  font-size:13px;
+  z-index:998;
+  box-shadow:0 2px 8px rgba(0,0,0,.2);
+  font-weight:500;
+  animation:slideDown 0.3s ease-out;
+">
+  📲 <b>MailBridge</b> can be installed on your device for quick access!
+  <button onclick="installPWA()" style="
+    margin-left:12px;
+    padding:6px 14px;
+    border:none;
+    border-radius:6px;
+    background:rgba(255,255,255,.2);
+    color:white;
+    cursor:pointer;
+    font-weight:bold;
+    font-size:12px;
+    border:1px solid rgba(255,255,255,.3);
+    transition:all 0.2s;
+  " onmouseover="this.style.background='rgba(255,255,255,.3)'" onmouseout="this.style.background='rgba(255,255,255,.2)'">
+    Install Now
+  </button>
+  <button onclick="document.getElementById('pwaBanner').style.display='none'" style="
+    margin-left:8px;
+    padding:6px 10px;
+    border:none;
+    background:transparent;
+    color:white;
+    cursor:pointer;
+    font-size:16px;
+  ">
+    ✕
+  </button>
+</div>
+
+<style>
+  @keyframes slideDown {
+    from { transform: translateY(-100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  main {
+    margin-top: 0;
+  }
+</style>
 
 <main>
   <div class="panel">
@@ -184,8 +244,52 @@
   </div>
 </main>
 <div id="toast"></div>
+<button id="installBtn" style="
+  display:none;
+  position:fixed;
+  bottom:28px;
+  left:28px;
+  z-index:999;
+  padding:14px 20px;
+  border:none;
+  border-radius:12px;
+  background:linear-gradient(135deg,#2dd4a0,#1a9e74);
+  color:white;
+  font-weight:bold;
+  font-size:14px;
+  font-family:var(--font);
+  cursor:pointer;
+  box-shadow:0 8px 24px rgba(45,212,160,.3);
+  transition:all 0.2s;
+  animation: slideIn 0.3s ease-out;
+">
+  📲 Install MailBridge
+</button>
+
+<style>
+  @keyframes slideIn {
+    from { transform: translateX(-20px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  
+  #installBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(45,212,160,.4);
+  }
+  
+  #installBtn:active {
+    transform: translateY(0);
+  }
+</style>
 
 <script>
+  // Register Service Worker for PWA
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/static/sw.js")
+      .then(reg => console.log("✓ Service Worker registered"))
+      .catch(err => console.error("✗ Service Worker registration failed:", err));
+  }
+
   const API = window.location.origin;
   let translatedText = "";
   let sentItems = [];
@@ -470,6 +574,44 @@
       if (gSigninDiv) gSigninDiv.style.display = "block";
     }
   }
+  // 🔥 PWA INSTALL LOGIC
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Show both install button and banner
+  document.getElementById('installBtn').style.display = 'block';
+  document.getElementById('pwaBanner').style.display = 'block';
+  console.log("✓ PWA Install prompt ready");
+});
+
+function installPWA() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(choiceResult => {
+      if (choiceResult.outcome === 'accepted') {
+        console.log("✓ PWA installed successfully");
+        showToast("✓ MailBridge installed! Check your home screen.", "success");
+        document.getElementById('pwaBanner').style.display = 'none';
+        document.getElementById('installBtn').style.display = 'none';
+      } else {
+        console.log("✗ PWA installation declined");
+      }
+      deferredPrompt = null;
+    });
+  }
+}
+
+document.getElementById('installBtn').addEventListener('click', installPWA);
+
+// Check if app is already installed
+window.addEventListener('appinstalled', () => {
+  console.log("✓ PWA was installed");
+  document.getElementById('installBtn').style.display = 'none';
+  document.getElementById('pwaBanner').style.display = 'none';
+});
+
 
 </script>
 </body>

@@ -131,6 +131,46 @@ Fix: Start python gmail_mcp_server.py first.
 Cause: Expired access token or wrong OAuth config.
 Fix: Use refresh-token mode and verify client ID/secret.
 
+## Deploy on Render
+
+This repo includes `render.yaml` to deploy both services:
+
+- `mailbridge-api` (main FastAPI app)
+- `mailbridge-mcp` (Gmail sender service)
+
+Steps:
+
+1. Push this folder to a GitHub repository.
+2. In Render, choose New + > Blueprint and select your repo.
+3. Render creates both services from `render.yaml`.
+4. In Render dashboard, set secrets for `mailbridge-mcp`:
+	- `GMAIL_REFRESH_TOKEN`
+	- `GOOGLE_OAUTH_CLIENT_ID`
+	- `GOOGLE_OAUTH_CLIENT_SECRET`
+	- (Optional) `GMAIL_ACCESS_TOKEN`
+5. Set `GOOGLE_CLIENT_ID` for `mailbridge-api`.
+6. Update `MCP_SERVER_URL` in `mailbridge-api` to your deployed MCP URL if needed.
+
+Default start commands used in Render:
+
+- API: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- MCP: `uvicorn gmail_mcp_server:app --host 0.0.0.0 --port $PORT`
+
+### Deployment Env Vars
+
+Main API (`mailbridge-api`):
+
+- `GOOGLE_CLIENT_ID`
+- `MCP_SERVER_URL` (example: `https://mailbridge-mcp.onrender.com`)
+- Optional override: `MCP_SEND_EMAIL_URL` (full endpoint, example: `https://mailbridge-mcp.onrender.com/send-email`)
+
+MCP (`mailbridge-mcp`):
+
+- `GMAIL_REFRESH_TOKEN`
+- `GOOGLE_OAUTH_CLIENT_ID`
+- `GOOGLE_OAUTH_CLIENT_SECRET`
+- Optional: `GMAIL_ACCESS_TOKEN`
+
 ## License
 
 Use and modify as needed for your project.

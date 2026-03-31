@@ -38,6 +38,8 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 MYMEMORY_SAFE_CHUNK_CHARS = 450
 SESSION_TTL_SECONDS = 24 * 60 * 60  # 24 hours
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
+MCP_SEND_EMAIL_URL = os.getenv("MCP_SEND_EMAIL_URL", "").strip()
+MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://127.0.0.1:8001").strip()
 
 # Database setup
 DB_PATH = Path(__file__).parent / "mailbridge.db"
@@ -141,8 +143,11 @@ def _get_user_by_email(email: str) -> dict[str, Any] | None:
 
 async def _send_email_via_mcp(to: str, subject: str, body: str) -> None:
     """Send email via MCP Gmail Server."""
-    # Call the MCP server running on port 8001
-    mcp_url = "http://127.0.0.1:8001/send-email"
+    # Support either a full send-email URL or a server base URL.
+    if MCP_SEND_EMAIL_URL:
+        mcp_url = MCP_SEND_EMAIL_URL
+    else:
+        mcp_url = f"{MCP_SERVER_URL.rstrip('/')}/send-email"
     
     try:
         async with httpx.AsyncClient() as client:
@@ -159,7 +164,11 @@ async def _send_email_via_mcp(to: str, subject: str, body: str) -> None:
     except httpx.ConnectError:
         raise HTTPException(
             status_code=503,
-            detail="Gmail MCP Server is not running. Start it with: python gmail_mcp_server.py"
+            detail=(
+                "Gmail MCP Server is not reachable. "
+                "Check MCP_SERVER_URL or MCP_SEND_EMAIL_URL, or start local MCP server "
+                "with: python gmail_mcp_server.py"
+            )
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Email send failed: {str(e)}")

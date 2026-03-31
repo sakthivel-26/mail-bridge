@@ -9,3 +9,7 @@ mailbridge/.env
 
 # Local database
 mailbridge/mailbridge.db
+
+mailbridge/.env
+mailbridge/__pycache__/
+*.pyc
