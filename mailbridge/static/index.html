@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MailBridge – Translate & Send</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0d0f14;--surface:#13161e;--surface2:#1b1f2b;
+    --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.14);
+    --text:#e8eaf0;--muted:#7a7f92;
+    --accent:#4f8ef7;--accent2:#7c5af7;
+    --success:#2dd4a0;--warn:#f7c04f;--danger:#f75a5a;
+    --radius:8px;--font:'Syne',sans-serif;--mono:'DM Mono',monospace;
+  }
+  body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;display:flex;flex-direction:column;}
+  header{display:flex;align-items:center;justify-content:space-between;padding:18px 32px;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap;gap:10px;}
+  .logo{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:700;letter-spacing:-.5px;}
+  .logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;}
+  .badge-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .pill{display:flex;align-items:center;gap:6px;border-radius:20px;padding:5px 12px;font-size:12px;font-family:var(--mono);}
+  .pill-green{background:rgba(45,212,160,.1);border:1px solid rgba(45,212,160,.25);color:var(--success);}
+  .pill-green::before{content:'';width:6px;height:6px;background:var(--success);border-radius:50%;animation:pulse 2s infinite;}
+  .pill-blue{background:rgba(79,142,247,.1);border:1px solid rgba(79,142,247,.25);color:var(--accent);}
+  .auth-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .auth-row input{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:7px 10px;font-family:var(--font);font-size:12px;min-width:180px;}
+  .auth-row button{padding:8px 10px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-family:var(--font);}
+  .auth-connect{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;}
+  .auth-disconnect{background:rgba(247,90,90,.15);color:var(--danger);border:1px solid rgba(247,90,90,.35);}
+  .auth-state{font-size:12px;font-family:var(--mono);color:var(--muted);}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  main{flex:1;display:grid;grid-template-columns:1fr 1fr;max-height:calc(100vh - 65px);}
+  .panel{padding:28px 32px;border-right:1px solid var(--border);display:flex;flex-direction:column;gap:18px;overflow-y:auto;}
+  .panel:last-child{border-right:none;}
+  .panel-title{font-size:11px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);font-family:var(--mono);}
+  .field{display:flex;flex-direction:column;gap:7px;}
+  .field label{font-size:12px;color:var(--muted);font-family:var(--mono);letter-spacing:.5px;}
+  .field input,.field textarea,.field select{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);color:var(--text);font-family:var(--font);font-size:14px;padding:10px 14px;transition:border-color .2s;outline:none;resize:none;width:100%;}
+  .field input:focus,.field textarea:focus,.field select:focus{border-color:var(--accent);}
+  .field textarea{min-height:140px;line-height:1.6;}
+  .field select option{background:#1b1f2b;}
+  .lang-row{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:10px;}
+  .lang-arrow{width:36px;height:36px;display:flex;align-items:center;justify-content:center;background:var(--surface2);border:1px solid var(--border2);border-radius:50%;color:var(--muted);font-size:14px;flex-shrink:0;}
+  .btn{padding:12px 22px;border-radius:var(--radius);border:none;font-family:var(--font);font-size:14px;font-weight:600;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:8px;justify-content:center;}
+  .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;}
+  .btn-primary:hover{opacity:.88;transform:translateY(-1px);}
+  .btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+  .btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border2);}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+  .btn-ghost:disabled{opacity:.4;cursor:not-allowed;}
+  .btn-send-all{background:linear-gradient(135deg,var(--success),#1a9e74);color:#fff;width:100%;}
+  .btn-send-all:hover{opacity:.88;transform:translateY(-1px);}
+  .btn-send-all:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+  .btn-row{display:flex;gap:10px;}
+  .btn-row .btn{flex:1;}
+  .output-box{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:14px;min-height:140px;font-size:14px;line-height:1.7;color:var(--text);white-space:pre-wrap;word-break:break-word;flex:1;}
+  .output-placeholder{color:var(--muted);font-style:italic;}
+  .tag{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-family:var(--mono);}
+  .tag-info{background:rgba(79,142,247,.12);color:var(--accent);border:1px solid rgba(79,142,247,.2);}
+  .tag-success{background:rgba(45,212,160,.10);color:var(--success);border:1px solid rgba(45,212,160,.2);}
+  .tag-danger{background:rgba(247,90,90,.10);color:var(--danger);border:1px solid rgba(247,90,90,.2);}
+  .tag-warn{background:rgba(247,192,79,.10);color:var(--warn);border:1px solid rgba(247,192,79,.2);}
+  .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.15);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;display:inline-block;flex-shrink:0;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .speed-row{display:flex;align-items:center;gap:10px;}
+  .speed-label{font-size:11px;font-family:var(--mono);color:var(--muted);min-width:50px;}
+  .speed-bar{flex:1;height:4px;background:var(--surface2);border-radius:4px;overflow:hidden;}
+  .speed-fill{height:100%;background:var(--success);border-radius:4px;width:0%;transition:width .4s ease;}
+  .speed-ms{font-size:11px;font-family:var(--mono);color:var(--success);min-width:55px;text-align:right;}
+  .char-count{font-size:11px;font-family:var(--mono);color:var(--muted);text-align:right;}
+  .divider{height:1px;background:var(--border);}
+  .sent-log{display:flex;flex-direction:column;gap:10px;max-height:200px;overflow-y:auto;}
+  .log-item{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:12px;display:flex;flex-direction:column;gap:4px;}
+  .log-top{display:flex;justify-content:space-between;align-items:center;}
+  .log-to{color:var(--accent);font-family:var(--mono);}
+  .log-time{color:var(--muted);font-family:var(--mono);font-size:10px;}
+  .log-sub{color:var(--muted);}
+  #toast{position:fixed;bottom:28px;right:28px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius);padding:14px 20px;font-size:13px;display:none;align-items:center;gap:10px;z-index:999;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,.5);}
+  ::-webkit-scrollbar{width:4px;}
+  ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
+  @media(max-width:720px){main{grid-template-columns:1fr;max-height:none;}.panel{border-right:none;border-bottom:1px solid var(--border);padding:20px 18px;}header{padding:14px 18px;}.auth-row{width:100%;}.auth-row input{min-width:140px;flex:1;}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="logo-icon">✉</div>
+    MailBridge
+    <span style="font-size:11px;color:var(--muted);font-family:var(--mono);font-weight:400;">v4</span>
+  </div>
+  <div class="badge-row">
+    <div class="pill pill-blue">⚡ Google Translate · Free</div>
+    <div class="pill pill-green" id="serverStatus">Checking Server + MCP...</div>
+  </div>
+  <div class="auth-row">
+    <div id="g_id_onload" data-client_id="931753516529-bnjr91coe5tiova8pm1f3lr6ba011se2.apps.googleusercontent.com" data-callback="onGoogleSignIn"></div>
+    <div class="g_id_signin" data-type="standard" data-size="large" data-theme="dark" data-text="signin_with" data-shape="rectangular" data-logo_alignment="left"></div>
+    <button class="auth-disconnect" onclick="logoutUser()" id="logoutBtn" disabled>Logout</button>
+    <span class="auth-state" id="authState">Not connected</span>
+  </div>
+  <!-- Register form removed - Google Sign-In handles registration -->
+
+</header>
+
+<main>
+  <div class="panel">
+    <p class="panel-title">Compose</p>
+    <div class="field">
+      <label>To (recipient email)</label>
+      <input type="email" id="to" placeholder="partner@china.com"/>
+    </div>
+    <div class="field">
+      <label>Subject</label>
+      <input type="text" id="subject" placeholder="Business Proposal – Q2 2025"/>
+    </div>
+    <div class="lang-row">
+      <div class="field">
+        <label>From language</label>
+        <select id="fromLang">
+          <option value="en">English</option>
+          <option value="ta">Tamil</option>
+          <option value="hi">Hindi</option>
+          <option value="te">Telugu</option>
+          <option value="ml">Malayalam</option>
+        </select>
+      </div>
+      <div class="lang-arrow">→</div>
+      <div class="field">
+        <label>Translate to</label>
+        <select id="toLang">
+          <option value="zh-CN">Chinese (Simplified)</option>
+          <option value="zh-TW">Chinese (Traditional)</option>
+          <option value="ja">Japanese</option>
+          <option value="ko">Korean</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="ar">Arabic</option>
+          <option value="ru">Russian</option>
+          <option value="pt">Portuguese</option>
+          <option value="it">Italian</option>
+          <option value="tr">Turkish</option>
+          <option value="nl">Dutch</option>
+          <option value="vi">Vietnamese</option>
+          <option value="th">Thai</option>
+          <option value="id">Indonesian</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>Your message</label>
+      <textarea id="emailBody" placeholder="Dear Partner,&#10;&#10;I hope this email finds you well..."></textarea>
+      <div class="char-count" id="charCount">0 characters</div>
+    </div>
+    <div class="speed-row">
+      <span class="speed-label">Speed</span>
+      <div class="speed-bar"><div class="speed-fill" id="speedFill"></div></div>
+      <span class="speed-ms" id="speedMs">— ms</span>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="translateEmail()" id="translateBtn">⟳ Translate</button>
+      <button class="btn btn-primary" onclick="sendTranslated()" id="sendBtn" disabled>✉ Send</button>
+    </div>
+    <button class="btn btn-send-all" onclick="translateAndSend()" id="sendAllBtn">⚡ Translate & Send in One Click</button>
+  </div>
+
+  <div class="panel">
+    <p class="panel-title">Translated Preview</p>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <span id="translationTag" class="tag tag-info">Awaiting translation</span>
+      <button class="btn btn-ghost" style="padding:6px 14px;font-size:12px;" onclick="copyTranslation()" id="copyBtn" disabled>Copy</button>
+    </div>
+    <div class="output-box" id="translatedOutput">
+      <span class="output-placeholder">Translated email appears here instantly...</span>
+    </div>
+    <div class="divider"></div>
+    <p class="panel-title">Sent Log</p>
+    <div class="sent-log" id="sentLog">
+      <p style="font-size:12px;color:var(--muted);font-family:var(--mono);">No emails sent yet.</p>
+    </div>
+  </div>
+</main>
+<div id="toast"></div>
+
+<script>
+  const API = window.location.origin;
+  let translatedText = "";
+  let sentItems = [];
+  let authToken = localStorage.getItem("mailbridge_auth_token") || "";
+  let authEmail = localStorage.getItem("mailbridge_auth_email") || "";
+
+  const LANG_NAMES = {
+    "zh-CN":"Chinese (Simplified)","zh-TW":"Chinese (Traditional)",
+    "ja":"Japanese","ko":"Korean","es":"Spanish","fr":"French",
+    "de":"German","ar":"Arabic","ru":"Russian","pt":"Portuguese",
+    "it":"Italian","tr":"Turkish","nl":"Dutch","vi":"Vietnamese",
+    "th":"Thai","id":"Indonesian"
+  };
+
+  // Handle Google Sign-In callback
+  async function onGoogleSignIn(response) {
+    const idToken = response.credential;
+    
+    try {
+      const res = await fetch(API + "/auth/google", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({id_token: idToken})
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Google authentication failed");
+      
+      authToken = data.token;
+      authEmail = data.email;
+      localStorage.setItem("mailbridge_auth_token", authToken);
+      localStorage.setItem("mailbridge_auth_email", authEmail);
+      setAuthUi(true, authEmail);
+      showToast("✓ Logged in with Google!", "success");
+    } catch (err) {
+      showToast("✗ " + err.message, "danger");
+      // Sign out from Google if backend auth failed
+      google.accounts.id.disableAutoSelect();
+    }
+  }
+
+  // Check server health on load
+  async function checkServer() {
+    const el = document.getElementById("serverStatus");
+    try {
+      const res = await fetch(API + "/health");
+      if (res.ok) {
+        el.textContent = "Server Running ✓ | MCP Enabled";
+        el.className = "pill pill-green";
+      } else { throw new Error(); }
+    } catch {
+      el.textContent = "Server Offline ✗ | MCP Unavailable";
+      el.style.background = "rgba(247,90,90,.1)";
+      el.style.borderColor = "rgba(247,90,90,.25)";
+      el.style.color = "var(--danger)";
+    }
+  }
+  checkServer();
+
+  function authHeaders() {
+    return authToken ? {"X-Auth-Token": authToken} : {};
+  }
+
+  async function restoreAuthSession() {
+    if (!authToken) {
+      setAuthUi(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(API + "/auth/me", {headers: {...authHeaders()}});
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Session invalid");
+      authEmail = data.email;
+      localStorage.setItem("mailbridge_auth_email", authEmail);
+      setAuthUi(true, authEmail);
+    } catch {
+      authToken = "";
+      authEmail = "";
+      localStorage.removeItem("mailbridge_auth_token");
+      localStorage.removeItem("mailbridge_auth_email");
+      setAuthUi(false);
+    }
+  }
+
+  async function logoutUser() {
+    if (authToken) {
+      try {
+        await fetch(API + "/auth/logout", {method: "POST", headers: {...authHeaders()}});
+      } catch {}
+    }
+
+    authToken = "";
+    authEmail = "";
+    localStorage.removeItem("mailbridge_auth_token");
+    localStorage.removeItem("mailbridge_auth_email");
+    google.accounts.id.renderButton(document.querySelector(".g_id_signin"), {
+      theme: "dark",
+      size: "large",
+      text: "signin_with"
+    });
+    setAuthUi(false);
+    showToast("Logged out", "info");
+  }
+
+  restoreAuthSession();
+
+  document.getElementById("emailBody").addEventListener("input", function(){
+    document.getElementById("charCount").textContent = this.value.length + " characters";
+  });
+
+  async function translateEmail() {
+    const body = document.getElementById("emailBody").value.trim();
+    const fromLang = document.getElementById("fromLang").value;
+    const toLang = document.getElementById("toLang").value;
+    if (!body) { showToast("⚠ Write your email first.", "warn"); return; }
+
+    const btn = document.getElementById("translateBtn");
+    const tag = document.getElementById("translationTag");
+    const output = document.getElementById("translatedOutput");
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Translating...';
+    tag.className = "tag tag-info"; tag.textContent = "Translating...";
+    output.innerHTML = '<span class="output-placeholder">Translating...</span>';
+    document.getElementById("sendBtn").disabled = true;
+    document.getElementById("copyBtn").disabled = true;
+    document.getElementById("speedFill").style.width = "0%";
+    document.getElementById("speedMs").textContent = "— ms";
+
+    const t0 = performance.now();
+    try {
+      const res = await fetch(API + "/translate", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({text: body, from_lang: fromLang, to_lang: toLang})
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Translation failed");
+
+      translatedText = data.translated_text;
+      const elapsed = Math.round(performance.now() - t0);
+      document.getElementById("speedFill").style.width = Math.max(8, 100 - (elapsed/2000)*100) + "%";
+      document.getElementById("speedMs").textContent = elapsed + " ms";
+      output.textContent = translatedText;
+      tag.className = "tag tag-success";
+      tag.textContent = "→ " + (LANG_NAMES[toLang] || toLang);
+      document.getElementById("sendBtn").disabled = false;
+      document.getElementById("copyBtn").disabled = false;
+      showToast("⚡ Translated in " + elapsed + "ms!", "success");
+    } catch(err) {
+      tag.className = "tag tag-danger"; tag.textContent = "Failed";
+      output.innerHTML = '<span class="output-placeholder">Error: ' + err.message + '</span>';
+      showToast("✗ " + err.message, "danger");
+    }
+    btn.disabled = false; btn.innerHTML = "⟳ Translate";
+  }
+
+  async function sendTranslated() {
+    const to = document.getElementById("to").value.trim();
+    const subject = document.getElementById("subject").value.trim();
+    const toLang = document.getElementById("toLang").value;
+    if (!authToken) { showToast("⚠ Login first.", "warn"); return; }
+    if (!to) { showToast("⚠ Enter recipient email.", "warn"); return; }
+    if (!subject) { showToast("⚠ Enter subject.", "warn"); return; }
+    if (!translatedText) { showToast("⚠ Translate first.", "warn"); return; }
+
+    const btn = document.getElementById("sendBtn");
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Sending...';
+    try {
+      const res = await fetch(API + "/send-email", {
+        method: "POST",
+        headers: {"Content-Type":"application/json", ...authHeaders()},
+        body: JSON.stringify({to, subject, body: translatedText, to_lang: toLang})
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 401) logoutUser();
+        throw new Error(data.detail || "Send failed");
+      }
+      addToLog(to, subject, LANG_NAMES[toLang] || toLang);
+      showToast("✓ Email sent!", "success");
+      resetForm();
+    } catch(err) {
+      showToast("✗ " + err.message, "danger");
+    }
+    btn.disabled = false; btn.innerHTML = "✉ Send";
+  }
+
+  async function translateAndSend() {
+    const to = document.getElementById("to").value.trim();
+    const subject = document.getElementById("subject").value.trim();
+    const body = document.getElementById("emailBody").value.trim();
+    const fromLang = document.getElementById("fromLang").value;
+    const toLang = document.getElementById("toLang").value;
+
+    if (!authToken) { showToast("⚠ Login first.", "warn"); return; }
+    if (!to) { showToast("⚠ Enter recipient email.", "warn"); return; }
+    if (!subject) { showToast("⚠ Enter subject.", "warn"); return; }
+    if (!body) { showToast("⚠ Write your email first.", "warn"); return; }
+
+    const btn = document.getElementById("sendAllBtn");
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Translating & Sending...';
+
+    try {
+      const res = await fetch(API + "/translate-and-send", {
+        method: "POST",
+        headers: {"Content-Type":"application/json", ...authHeaders()},
+        body: JSON.stringify({to, subject, body, from_lang: fromLang, to_lang: toLang})
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (res.status === 401) logoutUser();
+        throw new Error(data.detail || "Failed");
+      }
+
+      translatedText = data.translated_text;
+      document.getElementById("translatedOutput").textContent = translatedText;
+      document.getElementById("translationTag").className = "tag tag-success";
+      document.getElementById("translationTag").textContent = "→ " + (LANG_NAMES[toLang] || toLang);
+      document.getElementById("copyBtn").disabled = false;
+
+      addToLog(to, subject, LANG_NAMES[toLang] || toLang);
+      showToast("✓ Translated & sent!", "success");
+    } catch(err) {
+      showToast("✗ " + err.message, "danger");
+    }
+    btn.disabled = false; btn.innerHTML = "⚡ Translate & Send in One Click";
+  }
+
+  function resetForm() {
+    ["to","subject","emailBody"].forEach(id => document.getElementById(id).value = "");
+    document.getElementById("charCount").textContent = "0 characters";
+    document.getElementById("translatedOutput").innerHTML = '<span class="output-placeholder">Translated email appears here instantly...</span>';
+    document.getElementById("translationTag").className = "tag tag-info";
+    document.getElementById("translationTag").textContent = "Awaiting translation";
+    document.getElementById("speedFill").style.width = "0%";
+    document.getElementById("speedMs").textContent = "— ms";
+    document.getElementById("copyBtn").disabled = true;
+    document.getElementById("sendBtn").disabled = true;
+    translatedText = "";
+  }
+
+  function copyTranslation() {
+    if (!translatedText) return;
+    navigator.clipboard.writeText(translatedText).then(() => showToast("✓ Copied!", "success"));
+  }
+
+  function addToLog(to, subject, lang) {
+    const time = new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
+    sentItems.unshift({to, subject, lang, time});
+    document.getElementById("sentLog").innerHTML = sentItems.map(i => `
+      <div class="log-item">
+        <div class="log-top"><span class="log-to">${i.to}</span><span class="log-time">${i.time}</span></div>
+        <span class="log-sub">${i.subject}</span>
+        <span class="tag tag-success" style="width:fit-content;margin-top:2px;">${i.lang}</span>
+      </div>`).join("");
+  }
+
+  function showToast(msg, type="info") {
+    const t = document.getElementById("toast");
+    const c = {success:"var(--success)",warn:"var(--warn)",danger:"var(--danger)",info:"var(--accent)"};
+    t.innerHTML = `<span style="color:${c[type]}">${msg}</span>`;
+    t.style.display = "flex";
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => t.style.display = "none", 3500);
+  }
+
+  function setAuthUi(connected, email = "") {
+    const state = document.getElementById("authState");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const gSigninDiv = document.querySelector(".g_id_signin");
+
+    if (connected) {
+      state.textContent = "Connected: " + email;
+      state.style.color = "var(--success)";
+      logoutBtn.disabled = false;
+      if (gSigninDiv) gSigninDiv.style.display = "none";
+    } else {
+      state.textContent = "Not connected";
+      state.style.color = "var(--muted)";
+      logoutBtn.disabled = true;
+      if (gSigninDiv) gSigninDiv.style.display = "block";
+    }
+  }
+
+</script>
+</body>
+</html>

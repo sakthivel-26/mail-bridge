@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Local env files
+.env
+mailbridge/.env
+
+# Local database
+mailbridge/mailbridge.db
