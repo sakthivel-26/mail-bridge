@@ -131,45 +131,59 @@ Fix: Start python gmail_mcp_server.py first.
 Cause: Expired access token or wrong OAuth config.
 Fix: Use refresh-token mode and verify client ID/secret.
 
-## Deploy on Render
+## Deploy Frontend on Vercel and Backend Elsewhere
 
-This repo includes `render.yaml` to deploy both services:
+You can host frontend and backend separately:
 
-- `mailbridge-api` (main FastAPI app)
-- `mailbridge-mcp` (Gmail sender service)
+- Frontend: Vercel (from `static/`)
+- Backend API + MCP: Leapcell (or any always-on host)
 
-Steps:
+### 1. Deploy Backend (Leapcell or similar)
 
-1. Push this folder to a GitHub repository.
-2. In Render, choose New + > Blueprint and select your repo.
-3. Render creates both services from `render.yaml`.
-4. In Render dashboard, set secrets for `mailbridge-mcp`:
+Deploy both Python apps and expose public URLs:
+
+- Main API app (`main.py`) with start command:
+	- `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- MCP app (`gmail_mcp_server.py`) with start command:
+	- `uvicorn gmail_mcp_server:app --host 0.0.0.0 --port $PORT`
+
+Set backend env vars:
+
+- Main API:
+	- `GOOGLE_CLIENT_ID`
+	- `MCP_SERVER_URL` = public MCP URL
+- MCP:
 	- `GMAIL_REFRESH_TOKEN`
 	- `GOOGLE_OAUTH_CLIENT_ID`
 	- `GOOGLE_OAUTH_CLIENT_SECRET`
-	- (Optional) `GMAIL_ACCESS_TOKEN`
-5. Set `GOOGLE_CLIENT_ID` for `mailbridge-api`.
-6. Update `MCP_SERVER_URL` in `mailbridge-api` to your deployed MCP URL if needed.
+	- Optional: `GMAIL_ACCESS_TOKEN`
 
-Default start commands used in Render:
+### 2. Configure Frontend for External API
 
-- API: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-- MCP: `uvicorn gmail_mcp_server:app --host 0.0.0.0 --port $PORT`
+Edit `static/config.js`:
 
-### Deployment Env Vars
+- Set `API_BASE_URL` to your deployed main API URL
+- Example: `https://mailbridge-api.your-host.com`
 
-Main API (`mailbridge-api`):
+### 3. Deploy Frontend to Vercel
 
-- `GOOGLE_CLIENT_ID`
-- `MCP_SERVER_URL` (example: `https://mailbridge-mcp.onrender.com`)
-- Optional override: `MCP_SEND_EMAIL_URL` (full endpoint, example: `https://mailbridge-mcp.onrender.com/send-email`)
+In Vercel:
 
-MCP (`mailbridge-mcp`):
+1. Import your GitHub repo.
+2. Set Root Directory to `mailbridge/static`.
+3. Framework Preset: `Other`.
+4. Deploy.
 
-- `GMAIL_REFRESH_TOKEN`
-- `GOOGLE_OAUTH_CLIENT_ID`
-- `GOOGLE_OAUTH_CLIENT_SECRET`
-- Optional: `GMAIL_ACCESS_TOKEN`
+`static/vercel.json` is included so existing `/static/...` paths continue to work.
+
+### 4. Post-Deploy Checks
+
+Run these in browser:
+
+- Frontend URL opens and loads UI.
+- `https://<backend-api>/health` returns ok.
+- Login with Google works.
+- Translate and Send works end-to-end.
 
 ## License
 
