@@ -292,7 +292,8 @@
   }
 
   const APP_CONFIG = window.MAILBRIDGE_CONFIG || {};
-  const API = (APP_CONFIG.API_BASE_URL || window.location.origin).replace(/\/+$/, "");
+  const API_FROM_CONFIG = (APP_CONFIG.API_BASE_URL || "").trim();
+  const API = (API_FROM_CONFIG || window.location.origin).replace(/\/+$/, "");
   let translatedText = "";
   let sentItems = [];
   let authToken = localStorage.getItem("mailbridge_auth_token") || "";
@@ -306,6 +307,25 @@
     "th":"Thai","id":"Indonesian"
   };
 
+  async function parseApiResponse(res) {
+    const contentType = (res.headers.get("content-type") || "").toLowerCase();
+    if (contentType.includes("application/json")) {
+      return await res.json();
+    }
+
+    const text = await res.text();
+    const compact = (text || "").replace(/\s+/g, " ").trim();
+    const snippet = compact ? compact.slice(0, 140) : `HTTP ${res.status}`;
+    return {detail: snippet, _nonJson: true};
+  }
+
+  function apiErrorMessage(res, data, fallback) {
+    if (data && typeof data.detail === "string" && data.detail.trim()) {
+      return data.detail;
+    }
+    return `${fallback} (HTTP ${res.status})`;
+  }
+
   // Handle Google Sign-In callback
   async function onGoogleSignIn(response) {
     const idToken = response.credential;
@@ -316,8 +336,8 @@
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({id_token: idToken})
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Google authentication failed");
+      const data = await parseApiResponse(res);
+      if (!res.ok) throw new Error(apiErrorMessage(res, data, "Google authentication failed"));
       
       authToken = data.token;
       authEmail = data.email;
@@ -335,6 +355,14 @@
   // Check server health on load
   async function checkServer() {
     const el = document.getElementById("serverStatus");
+    if (!API_FROM_CONFIG && window.location.hostname.includes("vercel.app")) {
+      el.textContent = "Set API_BASE_URL in static/config.js";
+      el.style.background = "rgba(247,90,90,.1)";
+      el.style.borderColor = "rgba(247,90,90,.25)";
+      el.style.color = "var(--danger)";
+      return;
+    }
+
     try {
       const res = await fetch(API + "/health");
       if (res.ok) {
@@ -362,8 +390,8 @@
 
     try {
       const res = await fetch(API + "/auth/me", {headers: {...authHeaders()}});
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Session invalid");
+      const data = await parseApiResponse(res);
+      if (!res.ok) throw new Error(apiErrorMessage(res, data, "Session invalid"));
       authEmail = data.email;
       localStorage.setItem("mailbridge_auth_email", authEmail);
       setAuthUi(true, authEmail);
@@ -428,8 +456,11 @@
         headers: {"Content-Type":"application/json"},
         body: JSON.stringify({text: body, from_lang: fromLang, to_lang: toLang})
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Translation failed");
+      const data = await parseApiResponse(res);
+      if (!res.ok) throw new Error(apiErrorMessage(res, data, "Translation failed"));
+      if (!data.translated_text) {
+        throw new Error("Backend response missing translated text");
+      }
 
       translatedText = data.translated_text;
       const elapsed = Math.round(performance.now() - t0);
@@ -466,10 +497,10 @@
         headers: {"Content-Type":"application/json", ...authHeaders()},
         body: JSON.stringify({to, subject, body: translatedText, to_lang: toLang})
       });
-      const data = await res.json();
+      const data = await parseApiResponse(res);
       if (!res.ok) {
         if (res.status === 401) logoutUser();
-        throw new Error(data.detail || "Send failed");
+        throw new Error(apiErrorMessage(res, data, "Send failed"));
       }
       addToLog(to, subject, LANG_NAMES[toLang] || toLang);
       showToast("✓ Email sent!", "success");
@@ -501,10 +532,10 @@
         headers: {"Content-Type":"application/json", ...authHeaders()},
         body: JSON.stringify({to, subject, body, from_lang: fromLang, to_lang: toLang})
       });
-      const data = await res.json();
+      const data = await parseApiResponse(res);
       if (!res.ok) {
         if (res.status === 401) logoutUser();
-        throw new Error(data.detail || "Failed");
+        throw new Error(apiErrorMessage(res, data, "Failed"));
       }
 
       translatedText = data.translated_text;
@@ -613,6 +644,10 @@ window.addEventListener('appinstalled', () => {
   document.getElementById('installBtn').style.display = 'none';
   document.getElementById('pwaBanner').style.display = 'none';
 });
+
+if (!API_FROM_CONFIG && window.location.hostname.includes("vercel.app")) {
+  showToast("Set API_BASE_URL in static/config.js to your backend URL.", "warn");
+}
 
 
 </script>

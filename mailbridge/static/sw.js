@@ -1,4 +1,4 @@
-const CACHE_NAME = "mailbridge-v1";
+const CACHE_NAME = "mailbridge-v2";
 const ASSETS_TO_CACHE = [
   "/",
   "/static/index.html",
@@ -39,6 +39,12 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   // Skip non-GET requests
   if (event.request.method !== "GET") {
+    return;
+  }
+
+  // Always fetch runtime config from network to avoid stale backend URLs.
+  if (event.request.url.includes("/static/config.js")) {
+    event.respondWith(fetch(event.request));
     return;
   }
 

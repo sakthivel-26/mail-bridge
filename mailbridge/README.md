@@ -131,32 +131,37 @@ Fix: Start python gmail_mcp_server.py first.
 Cause: Expired access token or wrong OAuth config.
 Fix: Use refresh-token mode and verify client ID/secret.
 
-## Deploy Frontend on Vercel and Backend Elsewhere
+## Deploy Frontend on Vercel and Backend on Render
 
 You can host frontend and backend separately:
 
 - Frontend: Vercel (from `static/`)
-- Backend API + MCP: Leapcell (or any always-on host)
+- Backend API + MCP: Render (2 web services)
 
-### 1. Deploy Backend (Leapcell or similar)
+### 1. Deploy Backend on Render
 
-Deploy both Python apps and expose public URLs:
+Use Render Blueprint with the `render.yaml` file in repository root. It creates:
 
-- Main API app (`main.py`) with start command:
-	- `uvicorn main:app --host 0.0.0.0 --port $PORT`
-- MCP app (`gmail_mcp_server.py`) with start command:
-	- `uvicorn gmail_mcp_server:app --host 0.0.0.0 --port $PORT`
+- `mailbridge-mcp` (MCP sender service)
+- `mailbridge-api` (main API)
 
 Set backend env vars:
 
 - Main API:
 	- `GOOGLE_CLIENT_ID`
-	- `MCP_SERVER_URL` = public MCP URL
+	- `MCP_SERVER_URL` = `https://mailbridge-mcp.onrender.com`
 - MCP:
 	- `GMAIL_REFRESH_TOKEN`
 	- `GOOGLE_OAUTH_CLIENT_ID`
 	- `GOOGLE_OAUTH_CLIENT_SECRET`
 	- Optional: `GMAIL_ACCESS_TOKEN`
+
+Manual commands (if not using Blueprint):
+
+- Main API app (`main.py`) with start command:
+	- `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- MCP app (`gmail_mcp_server.py`) with start command:
+	- `uvicorn gmail_mcp_server:app --host 0.0.0.0 --port $PORT`
 
 ### 2. Configure Frontend for External API
 

@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: mailbridge-mcp
+    runtime: python
+    rootDir: mailbridge
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn gmail_mcp_server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GMAIL_REFRESH_TOKEN
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: GMAIL_ACCESS_TOKEN
+        sync: false
+
+  - type: web
+    name: mailbridge-api
+    runtime: python
+    rootDir: mailbridge
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: MCP_SERVER_URL
+        value: https://mailbridge-mcp.onrender.com
