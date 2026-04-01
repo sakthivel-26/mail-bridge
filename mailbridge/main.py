@@ -21,9 +21,19 @@ from fastapi import FastAPI
 
 app = FastAPI()
 
+from fastapi import FastAPI
+
+app = FastAPI()
+
+# ✅ ADD THIS
 @app.get("/")
-def read_root():
+def home():
     return {"message": "API is running"}
+
+# ✅ ADD THIS
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path, override=True)
