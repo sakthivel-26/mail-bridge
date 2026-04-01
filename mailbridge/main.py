@@ -411,12 +411,6 @@ async def translate_and_send(
 def auth_google_get():
     return {"error": "Use POST method"}
 
-
-# ✅ Your existing POST route
-@app.post("/auth/google", response_model=AuthLoginResponse)
-def auth_google(req: GoogleAuthRequest):
-
-
 @app.post("/auth/google", response_model=AuthLoginResponse)
 def auth_google(req: GoogleAuthRequest):
     """Authenticate with Google OAuth ID token."""
