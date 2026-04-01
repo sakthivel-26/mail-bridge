@@ -56,7 +56,7 @@ MYMEMORY_SAFE_CHUNK_CHARS = 450
 SESSION_TTL_SECONDS = 24 * 60 * 60  # 24 hours
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 MCP_SEND_EMAIL_URL = os.getenv("MCP_SEND_EMAIL_URL", "").strip()
-MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://127.0.0.1:8001").strip()
+MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "https://mailbridge-mcp.onrender.com").strip()
 
 # Database setup
 DB_PATH = Path(__file__).parent / "mailbridge.db"
