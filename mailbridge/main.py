@@ -407,39 +407,40 @@ async def translate_and_send(
     }
 
 # ✅ ADD THIS (for GET requests - temporary fix)
+# ✅ GET (optional - just for testing)
 @app.get("/auth/google")
 def auth_google_get():
     return {"error": "Use POST method"}
 
+
+# ✅ REAL LOGIN ROUTE (IMPORTANT)
+@app.post("/auth/google", response_model=AuthLoginResponse)
+def auth_google(req: GoogleAuthRequest):
+    """Authenticate with Google OAuth ID token."""
     try:
-        # Verify ID token with Google
         request_obj = requests.Request()
         idinfo = id_token.verify_oauth2_token(req.id_token, request_obj, GOOGLE_CLIENT_ID)
-        
-        # Extract email from token
+
         email = idinfo.get("email", "").lower()
         if not email:
             raise HTTPException(status_code=400, detail="Google token missing email")
-        
-        # Get or create user
+
         user = _get_user_by_email(email)
         if not user:
-            # Auto-register if user doesn't exist
             user = _create_user(email)
-        
-        # Create session
+
         token = _create_auth_session(user["id"])
-        
+
         return {
             "token": token,
             "email": user["email"],
             "expires_in_seconds": SESSION_TTL_SECONDS,
         }
+
     except ValueError as e:
         raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=401, detail="Google authentication failed")
-    
 
 
 @app.get("/auth/me")
