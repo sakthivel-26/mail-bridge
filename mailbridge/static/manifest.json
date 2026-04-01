@@ -1,7 +1,7 @@
 {
-  "name": "MailBridge – Translate & Send Emails",
-  "short_name": "MailBridge",
-  "description": "Instantly translate emails to 16+ languages and send with one click using Gmail API and Google Translate.",
+  "name": "Sakthivel's MailBridge – Translate & Send Emails",
+  "short_name": "Sakthivel's MailBridge",
+  "description": "Sakthivel's personal email translation tool — instantly translate emails to 16+ languages and send with one click using Gmail API and Google Translate.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
