@@ -5,7 +5,7 @@
 <meta name="theme-color" content="#4CAF50">
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>MailBridge – Translate & Send</title>
+<title>Sakthivel's MailBridge – Translate & Send</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="/static/config.js"></script>
@@ -92,7 +92,7 @@
 <header>
   <div class="logo">
     <div class="logo-icon">✉</div>
-    MailBridge
+    Sakthivel's MailBridge
     <span style="font-size:11px;color:var(--muted);font-family:var(--mono);font-weight:400;">v4</span>
   </div>
   <div class="badge-row">
@@ -126,7 +126,7 @@
   font-weight:500;
   animation:slideDown 0.3s ease-out;
 ">
-  📲 <b>MailBridge</b> can be installed on your device for quick access!
+  📲 <b>Sakthivel's MailBridge</b> can be installed on your device for quick access!
   <button onclick="installPWA()" style="
     margin-left:12px;
     padding:6px 14px;
@@ -264,7 +264,7 @@
   transition:all 0.2s;
   animation: slideIn 0.3s ease-out;
 ">
-  📲 Install MailBridge
+  📲 Install Sakthivel's MailBridge
 </button>
 
 <style>
@@ -594,7 +594,7 @@ function installPWA() {
     deferredPrompt.userChoice.then(choiceResult => {
       if (choiceResult.outcome === 'accepted') {
         console.log("✓ PWA installed successfully");
-        showToast("✓ MailBridge installed! Check your home screen.", "success");
+        showToast("✓ Sakthivel's MailBridge installed! Check your home screen.", "success");
         document.getElementById('pwaBanner').style.display = 'none';
         document.getElementById('installBtn').style.display = 'none';
       } else {
