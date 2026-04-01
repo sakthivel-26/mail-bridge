@@ -17,6 +17,13 @@ from typing import Any, Literal
 from dotenv import load_dotenv
 from google.auth.transport import requests
 from google.oauth2 import id_token
+from fastapi import FastAPI
+
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"message": "API is running"}
 
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path, override=True)
