@@ -275,7 +275,8 @@ def _get_auth_session(token: str) -> dict[str, Any]:
 
 
 class GoogleAuthRequest(BaseModel):
-    id_token: str  # ID token from Google Sign-In
+    id_token: str
+    access_token: str  # ID token from Google Sign-In
 
 
 class AuthLoginResponse(BaseModel):
@@ -404,7 +405,7 @@ async def translate_and_send(
     translated_text = translation["translated_text"]
 
     # Step 2: Send via MCP
-    await _send_email_via_mcp(req.to, req.subject, translated_text, req.gmail_access_token)
+    await _send_email_via_mcp(req.to, req.subject, translated_text, req.user_access_token)
 
     return {
         "success": True,
@@ -419,13 +420,20 @@ def auth_google_get():
     return {"error": "Use POST method"}
 
 
-# ✅ REAL LOGIN ROUTE (IMPORTANT)
+## 🔥 GLOBAL STORAGE (add top of file)
+USER_TOKENS = {}
+
+
 @app.post("/auth/google", response_model=AuthLoginResponse)
 def auth_google(req: GoogleAuthRequest):
     """Authenticate with Google OAuth ID token."""
     try:
         request_obj = requests.Request()
-        idinfo = id_token.verify_oauth2_token(req.id_token, request_obj, GOOGLE_CLIENT_ID)
+        idinfo = id_token.verify_oauth2_token(
+            req.id_token,
+            request_obj,
+            GOOGLE_CLIENT_ID
+        )
 
         email = idinfo.get("email", "").lower()
         if not email:
@@ -437,6 +445,9 @@ def auth_google(req: GoogleAuthRequest):
 
         token = _create_auth_session(user["id"])
 
+        # 🔥 STORE ACCESS TOKEN HERE
+        USER_TOKENS[email] = req.access_token
+
         return {
             "token": token,
             "email": user["email"],
@@ -447,7 +458,6 @@ def auth_google(req: GoogleAuthRequest):
         raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
     except Exception:
         raise HTTPException(status_code=401, detail="Google authentication failed")
-
 
 @app.get("/auth/me")
 def auth_me(x_auth_token: str | None = Header(default=None, alias="X-Auth-Token")):

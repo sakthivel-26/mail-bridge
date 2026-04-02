@@ -9,6 +9,43 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="/static/config.js"></script>
+<button onclick="loginWithGoogle()">Login with Google</button>
+<script>
+
+function loginWithGoogle() {
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: "YOUR_CLIENT_ID",
+    scope: "https://www.googleapis.com/auth/gmail.send",
+    callback: async (tokenResponse) => {
+
+      if (!tokenResponse.access_token) {
+        alert("No access token received");
+        return;
+      }
+
+      const accessToken = tokenResponse.access_token;
+
+      console.log("REAL TOKEN:", accessToken);
+
+      await fetch(window.MAILBRIDGE_CONFIG.API_BASE_URL + "/auth/google", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          id_token: "",
+          access_token: accessToken
+        })
+      });
+
+      alert("Login success!");
+    }
+  });
+
+  client.requestAccessToken();
+}
+
+</script>
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   :root{
@@ -361,6 +398,7 @@
 async function onGoogleSignIn(response) {
   try {
     const idToken = response.credential;
+    const accessToken = idToken;
 
     const res = await fetch(API + "/auth/google", {
       method: "POST",
@@ -368,7 +406,10 @@ async function onGoogleSignIn(response) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        id_token: idToken
+        id_token: idToken,
+        
+        access_token: accessToken 
+        
       })
     });
 
