@@ -31,31 +31,31 @@ app = FastAPI(
 @app.post("/send-email")
 async def send_email(req: SendEmailRequest) -> JSONResponse:
     try:
-        # 🔒 Validate token
-        if not req.access_token:
+        # ✅ CORRECT PLACE
+        access_token = req.access_token
+
+        if not access_token:
             raise HTTPException(status_code=400, detail="Missing access_token")
 
         if not req.to or not req.subject or not req.body:
             raise HTTPException(status_code=400, detail="Missing email fields")
 
-        # 📧 Create email message
+        # 📧 Create email
         message = MIMEText(req.body)
         message["To"] = req.to
         message["Subject"] = req.subject
 
-        # Encode message
         raw_message = base64.urlsafe_b64encode(
             message.as_bytes()
         ).decode("utf-8")
 
         headers = {
-            "Authorization": f"Bearer {req.access_token}",
+            "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json"
         }
 
         payload = {"raw": raw_message}
 
-        # 🔗 Call Gmail API
         async with httpx.AsyncClient(timeout=20.0) as client:
             response = await client.post(
                 GMAIL_SEND_URL,
@@ -63,7 +63,6 @@ async def send_email(req: SendEmailRequest) -> JSONResponse:
                 headers=headers
             )
 
-        # ✅ Success
         if response.status_code == 200:
             data = response.json()
             return JSONResponse({
@@ -72,7 +71,7 @@ async def send_email(req: SendEmailRequest) -> JSONResponse:
                 "message_id": data.get("id")
             })
 
-        # ❌ Gmail error
+        # Gmail error
         try:
             error_data = response.json()
             error_msg = error_data.get("error", {}).get("message", response.text)
@@ -103,13 +102,11 @@ def health() -> dict[str, Any]:
     }
 
 
-# ✅ ROOT (optional)
 @app.get("/")
 def root():
     return {"message": "Gmail MCP Server is running"}
 
 
-# ✅ RUN LOCAL
 if __name__ == "__main__":
     print("Starting Gmail MCP Server on port 8001...")
     uvicorn.run(app, host="0.0.0.0", port=8001)
