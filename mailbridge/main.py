@@ -21,10 +21,6 @@ from fastapi import FastAPI
 
 app = FastAPI()
 
-from fastapi import FastAPI
-
-app = FastAPI()
-
 # ✅ ADD THIS
 @app.get("/")
 def home():
@@ -158,7 +154,12 @@ def _get_user_by_email(email: str) -> dict[str, Any] | None:
     return dict(row) if row else None
 
 
-async def _send_email_via_mcp(to: str, subject: str, body: str) -> None:
+async def _send_email_via_mcp(
+    to: str,
+    subject: str,
+    body: str,
+    access_token: str | None = None,
+) -> None:
     """Send email via MCP Gmail Server."""
     # Support either a full send-email URL or a server base URL.
     if MCP_SEND_EMAIL_URL:
@@ -170,7 +171,7 @@ async def _send_email_via_mcp(to: str, subject: str, body: str) -> None:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 mcp_url,
-                json={   # 👇 PASTE HERE
+                json={
                     "to": to,
                     "subject": subject,
                     "body": body,
@@ -296,6 +297,7 @@ class SendEmailRequest(BaseModel):
     body: str          # already translated text
     from_lang: str = "en"
     to_lang: str = "zh-CN"
+    gmail_access_token: str | None = None
 
 class TranslateAndSendRequest(BaseModel):
     to: str
@@ -303,6 +305,7 @@ class TranslateAndSendRequest(BaseModel):
     body: str          # original text (will be translated then sent)
     from_lang: str = "en"
     to_lang: str = "zh-CN"
+    gmail_access_token: str | None = None
 
 
 # ---------- ROUTES ----------
@@ -368,15 +371,14 @@ async def send_email(req: SendEmailRequest, x_auth_token: str | None = Header(de
     if not x_auth_token:
         raise HTTPException(status_code=401, detail="Login required")
 
-    session = _get_auth_session(x_auth_token)
-    user_id = session["user_id"]
+    _get_auth_session(x_auth_token)
     
     # Validate email recipient
     if not req.to or not req.subject or not req.body:
         raise HTTPException(status_code=400, detail="Email fields (to, subject, body) are required")
     
     # Send via MCP server
-    await _send_email_via_mcp(req.to, req.subject, req.body ,user_access_token )
+    await _send_email_via_mcp(req.to, req.subject, req.body, req.gmail_access_token)
     
     return {"success": True, "message": f"Email sent to {req.to}"}
 
@@ -390,8 +392,7 @@ async def translate_and_send(
     if not x_auth_token:
         raise HTTPException(status_code=401, detail="Login required")
 
-    session = _get_auth_session(x_auth_token)
-    user_id = session["user_id"]
+    _get_auth_session(x_auth_token)
 
     # Validate input
     if not req.to or not req.subject or not req.body:
@@ -403,7 +404,7 @@ async def translate_and_send(
     translated_text = translation["translated_text"]
 
     # Step 2: Send via MCP
-    await _send_email_via_mcp(req.to, req.subject, translated_text)
+    await _send_email_via_mcp(req.to, req.subject, translated_text, req.gmail_access_token)
 
     return {
         "success": True,

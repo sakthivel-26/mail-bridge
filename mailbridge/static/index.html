@@ -298,6 +298,7 @@
   let sentItems = [];
   let authToken = localStorage.getItem("mailbridge_auth_token") || "";
   let authEmail = localStorage.getItem("mailbridge_auth_email") || "";
+  let gmailAccessToken = "";
 
   const LANG_NAMES = {
     "zh-CN":"Chinese (Simplified)","zh-TW":"Chinese (Traditional)",
@@ -326,14 +327,40 @@
     return `${fallback} (HTTP ${res.status})`;
   }
 
+  async function requestGmailAccessToken() {
+    if (gmailAccessToken) return gmailAccessToken;
+
+    if (!window.google || !google.accounts || !google.accounts.oauth2) {
+      throw new Error("Google OAuth client not available");
+    }
+
+    const clientId = (window.GOOGLE_CLIENT_ID || APP_CONFIG.GOOGLE_CLIENT_ID || "").trim();
+    if (!clientId) {
+      throw new Error("Google Client ID missing in config");
+    }
+
+    return await new Promise((resolve, reject) => {
+      const tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: clientId,
+        scope: "https://www.googleapis.com/auth/gmail.send",
+        callback: (tokenResponse) => {
+          if (tokenResponse && tokenResponse.access_token) {
+            gmailAccessToken = tokenResponse.access_token;
+            resolve(gmailAccessToken);
+            return;
+          }
+          reject(new Error("Gmail permission was not granted"));
+        }
+      });
+
+      tokenClient.requestAccessToken({prompt: "consent"});
+    });
+  }
+
   // Handle Google Sign-In callback
-  // ✅ GOOGLE LOGIN (FINAL FIXED VERSION)
 async function onGoogleSignIn(response) {
   try {
     const idToken = response.credential;
-
-    // 🔥 DEFINE HERE (VERY IMPORTANT)
-    const accessToken = idToken;
 
     const res = await fetch(API + "/auth/google", {
       method: "POST",
@@ -341,8 +368,7 @@ async function onGoogleSignIn(response) {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        id_token: idToken,
-        access_token: accessToken
+        id_token: idToken
       })
     });
 
@@ -360,6 +386,8 @@ async function onGoogleSignIn(response) {
     localStorage.setItem("mailbridge_auth_email", authEmail);
 
     setAuthUi(true, authEmail);
+
+    await requestGmailAccessToken();
 
     showToast("✓ Logged in with Google!", "success");
 
@@ -433,6 +461,7 @@ async function onGoogleSignIn(response) {
 
     authToken = "";
     authEmail = "";
+    gmailAccessToken = "";
     localStorage.removeItem("mailbridge_auth_token");
     localStorage.removeItem("mailbridge_auth_email");
     google.accounts.id.renderButton(document.querySelector(".g_id_signin"), {
@@ -512,10 +541,17 @@ async function onGoogleSignIn(response) {
     const btn = document.getElementById("sendBtn");
     btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Sending...';
     try {
+      const gmailToken = await requestGmailAccessToken();
       const res = await fetch(API + "/send-email", {
         method: "POST",
         headers: {"Content-Type":"application/json", ...authHeaders()},
-        body: JSON.stringify({to, subject, body: translatedText, to_lang: toLang})
+        body: JSON.stringify({
+          to,
+          subject,
+          body: translatedText,
+          to_lang: toLang,
+          gmail_access_token: gmailToken
+        })
       });
       const data = await parseApiResponse(res);
       if (!res.ok) {
@@ -547,10 +583,18 @@ async function onGoogleSignIn(response) {
     btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Translating & Sending...';
 
     try {
+      const gmailToken = await requestGmailAccessToken();
       const res = await fetch(API + "/translate-and-send", {
         method: "POST",
         headers: {"Content-Type":"application/json", ...authHeaders()},
-        body: JSON.stringify({to, subject, body, from_lang: fromLang, to_lang: toLang})
+        body: JSON.stringify({
+          to,
+          subject,
+          body,
+          from_lang: fromLang,
+          to_lang: toLang,
+          gmail_access_token: gmailToken
+        })
       });
       const data = await parseApiResponse(res);
       if (!res.ok) {
