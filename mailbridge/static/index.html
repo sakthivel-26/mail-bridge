@@ -327,12 +327,12 @@
   }
 
   // Handle Google Sign-In callback
-  // ✅ GOOGLE LOGIN (UPDATED - WITH access_token SUPPORT)
+  // ✅ GOOGLE LOGIN (FINAL FIXED VERSION)
 async function onGoogleSignIn(response) {
-  const idToken = response.credential;
-
   try {
-    // 🔥 TEMP: use idToken as access_token (for now)
+    const idToken = response.credential;
+
+    // 🔥 DEFINE HERE (VERY IMPORTANT)
     const accessToken = idToken;
 
     const res = await fetch(API + "/auth/google", {
@@ -342,7 +342,7 @@ async function onGoogleSignIn(response) {
       },
       body: JSON.stringify({
         id_token: idToken,
-        access_token: accessToken   // ✅ NEW FIELD
+        access_token: accessToken
       })
     });
 
@@ -359,7 +359,6 @@ async function onGoogleSignIn(response) {
     localStorage.setItem("mailbridge_auth_token", authToken);
     localStorage.setItem("mailbridge_auth_email", authEmail);
 
-    // ✅ Update UI
     setAuthUi(true, authEmail);
 
     showToast("✓ Logged in with Google!", "success");
@@ -367,7 +366,6 @@ async function onGoogleSignIn(response) {
   } catch (err) {
     showToast("✗ " + err.message, "danger");
 
-    // Reset Google login
     if (window.google && google.accounts && google.accounts.id) {
       google.accounts.id.disableAutoSelect();
     }
