@@ -6,4 +6,4 @@ python-multipart==0.0.9
 bcrypt==4.1.2
 google-auth==2.26.2
 requests>=2.31.0
-pydantic==2.10.4
+pydantic==2.6.4
