@@ -170,7 +170,12 @@ async def _send_email_via_mcp(to: str, subject: str, body: str) -> None:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 mcp_url,
-                json={"to": to, "subject": subject, "body": body},
+                json={   # 👇 PASTE HERE
+                    "to": to,
+                    "subject": subject,
+                    "body": body,
+                    "access_token": access_token
+                },
                 timeout=10.0
             )
         
@@ -371,7 +376,7 @@ async def send_email(req: SendEmailRequest, x_auth_token: str | None = Header(de
         raise HTTPException(status_code=400, detail="Email fields (to, subject, body) are required")
     
     # Send via MCP server
-    await _send_email_via_mcp(req.to, req.subject, req.body)
+    await _send_email_via_mcp(req.to, req.subject, req.body ,user_access_token )
     
     return {"success": True, "message": f"Email sent to {req.to}"}
 

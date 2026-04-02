@@ -1,153 +1,115 @@
-"""Gmail MCP Server: sends Gmail via HTTP endpoint for the main app."""
+"""Gmail MCP Server (Multi-user version)"""
 
 import base64
-import os
-import time
 from email.mime.text import MIMEText
-from pathlib import Path
 from typing import Any
 
 import httpx
 import uvicorn
-from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 
-# Load environment variables
-env_path = Path(__file__).parent / ".env"
-load_dotenv(dotenv_path=env_path, override=True)
-
-GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GMAIL_SEND_URL = "https://www.googleapis.com/gmail/v1/users/me/messages/send"
 
 
+# ✅ REQUEST MODEL
 class SendEmailRequest(BaseModel):
-    to: str
+    to: EmailStr
     subject: str
     body: str
+    access_token: str   # 🔥 user-specific token
 
 
-class GmailAuth:
-    """Resolves a valid access token from either access token or refresh token flow."""
+app = FastAPI(
+    title="Gmail MCP Server (Multi-user)",
+    version="2.0.0"
+)
 
-    def __init__(self) -> None:
-        self.access_token = os.getenv("GMAIL_ACCESS_TOKEN", "").strip()
-        self.refresh_token = os.getenv("GMAIL_REFRESH_TOKEN", "").strip()
-        self.client_id = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "").strip()
-        self.client_secret = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET", "").strip()
-        self._access_token_expires_at = 0.0
 
-        # Backward-compatible guard: refresh tokens often start with "1//".
-        # If user pasted refresh token into GMAIL_ACCESS_TOKEN, recover automatically.
-        if self.access_token.startswith("1//") and not self.refresh_token:
-            self.refresh_token = self.access_token
-            self.access_token = ""
+# ✅ SEND EMAIL
+@app.post("/send-email")
+async def send_email(req: SendEmailRequest) -> JSONResponse:
+    try:
+        # 🔒 Validate token
+        if not req.access_token:
+            raise HTTPException(status_code=400, detail="Missing access_token")
 
-    async def get_access_token(self) -> str:
-        # If direct access token is configured, use it.
-        if self.access_token and not self.refresh_token:
-            return self.access_token
+        if not req.to or not req.subject or not req.body:
+            raise HTTPException(status_code=400, detail="Missing email fields")
 
-        # If we have a cached refreshed token and it is still valid, reuse it.
-        if self.access_token and time.time() < self._access_token_expires_at:
-            return self.access_token
+        # 📧 Create email message
+        message = MIMEText(req.body)
+        message["To"] = req.to
+        message["Subject"] = req.subject
 
-        # Otherwise refresh token flow is required.
-        if not (self.refresh_token and self.client_id and self.client_secret):
-            raise HTTPException(
-                status_code=500,
-                detail=(
-                    "OAuth config missing. Set either GMAIL_ACCESS_TOKEN or all of: "
-                    "GMAIL_REFRESH_TOKEN, GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_CLIENT_SECRET"
-                ),
-            )
+        # Encode message
+        raw_message = base64.urlsafe_b64encode(
+            message.as_bytes()
+        ).decode("utf-8")
 
-        payload = {
-            "client_id": self.client_id,
-            "client_secret": self.client_secret,
-            "refresh_token": self.refresh_token,
-            "grant_type": "refresh_token",
+        headers = {
+            "Authorization": f"Bearer {req.access_token}",
+            "Content-Type": "application/json"
         }
 
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.post(GOOGLE_TOKEN_URL, data=payload)
-
-        if response.status_code != 200:
-            error_detail = response.text
-            raise HTTPException(
-                status_code=500,
-                detail=f"Failed to refresh Gmail access token: {error_detail}",
-            )
-
-        data = response.json()
-        token = data.get("access_token", "")
-        expires_in = int(data.get("expires_in", 3600))
-        if not token:
-            raise HTTPException(status_code=500, detail="Token refresh response missing access_token")
-
-        self.access_token = token
-        self._access_token_expires_at = time.time() + max(60, expires_in - 60)
-        return self.access_token
-
-
-class SendEmailTool:
-    """Tool to send emails via Gmail API."""
-
-    def __init__(self, auth: GmailAuth):
-        self.auth = auth
-
-    async def send_email(self, to: str, subject: str, body: str) -> dict[str, Any]:
-        access_token = await self.auth.get_access_token()
-
-        # Create RFC2822 message and Base64URL encode for Gmail API.
-        message = MIMEText(body)
-        message["To"] = to
-        message["Subject"] = subject
-        raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")
-
-        headers = {"Authorization": f"Bearer {access_token}"}
         payload = {"raw": raw_message}
 
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            response = await client.post(GMAIL_SEND_URL, json=payload, headers=headers)
+        # 🔗 Call Gmail API
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.post(
+                GMAIL_SEND_URL,
+                json=payload,
+                headers=headers
+            )
 
+        # ✅ Success
         if response.status_code == 200:
-            body_json = response.json()
-            return {
+            data = response.json()
+            return JSONResponse({
                 "success": True,
-                "message": f"Email sent to {to}",
-                "message_id": body_json.get("id"),
-            }
+                "message": f"Email sent to {req.to}",
+                "message_id": data.get("id")
+            })
 
-        error_msg = response.json().get("error", {}).get("message", response.text)
-        return {"success": False, "error": f"Gmail API error: {error_msg}"}
+        # ❌ Gmail error
+        try:
+            error_data = response.json()
+            error_msg = error_data.get("error", {}).get("message", response.text)
+        except Exception:
+            error_msg = response.text
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gmail API error: {error_msg}"
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal error: {str(e)}"
+        )
 
 
-app = FastAPI(title="Gmail MCP Server", version="1.1.0")
-auth = GmailAuth()
-tool = SendEmailTool(auth)
-
-
-@app.post("/send-email")
-async def send_email_endpoint(req: SendEmailRequest) -> JSONResponse:
-    result = await tool.send_email(req.to, req.subject, req.body)
-    if not result.get("success"):
-        raise HTTPException(status_code=500, detail=result.get("error", "Email send failed"))
-    return JSONResponse(result)
-
-
+# ✅ HEALTH CHECK
 @app.get("/health")
 def health() -> dict[str, Any]:
-    using_refresh_flow = bool(auth.refresh_token and auth.client_id and auth.client_secret)
     return {
         "status": "ok",
-        "service": "Gmail MCP Server",
-        "gmail_configured": bool(auth.access_token or auth.refresh_token),
-        "auth_mode": "refresh_token" if using_refresh_flow else "access_token",
+        "service": "Gmail MCP Server (Multi-user)"
     }
 
 
+# ✅ ROOT (optional)
+@app.get("/")
+def root():
+    return {"message": "Gmail MCP Server is running"}
+
+
+# ✅ RUN LOCAL
 if __name__ == "__main__":
     print("Starting Gmail MCP Server on port 8001...")
-    uvicorn.run(app, host="127.0.0.1", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
