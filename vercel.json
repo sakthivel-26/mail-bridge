@@ -29,6 +29,10 @@
       "destination": "/mailbridge/static/:path*"
     },
     {
+      "source": "/:file*.html",
+      "destination": "/mailbridge/static/:file*.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/mailbridge/static/index.html"
     }
