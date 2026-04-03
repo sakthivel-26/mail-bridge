@@ -154,6 +154,44 @@ def _get_user_by_email(email: str) -> dict[str, Any] | None:
     return dict(row) if row else None
 
 
+def _get_user_email_by_id(user_id: int) -> str:
+    """Fetch a user's email by id."""
+    conn = sqlite3.connect(str(DB_PATH))
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT email FROM users WHERE id = ?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=401, detail="User not found")
+    return _normalize_email(row["email"])
+
+
+async def _get_google_email_from_access_token(access_token: str) -> str:
+    """Resolve Google account email from OAuth access token."""
+    token = (access_token or "").strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="Missing Gmail access token")
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            res = await client.get(
+                "https://www.googleapis.com/oauth2/v3/userinfo",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        if res.status_code != 200:
+            raise HTTPException(status_code=401, detail="Invalid or expired Gmail token")
+        data = res.json()
+        email = _normalize_email(data.get("email", ""))
+        if not email:
+            raise HTTPException(status_code=401, detail="Unable to resolve Gmail token owner")
+        return email
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Token verification failed: {str(e)}")
+
+
 async def _send_email_via_mcp(
     to: str,
     subject: str,
@@ -376,11 +414,20 @@ async def send_email(req: SendEmailRequest, x_auth_token: str | None = Header(de
     if not x_auth_token:
         raise HTTPException(status_code=401, detail="Login required")
 
-    _get_auth_session(x_auth_token)
+    session = _get_auth_session(x_auth_token)
     
     # Validate email recipient
     if not req.to or not req.subject or not req.body:
         raise HTTPException(status_code=400, detail="Email fields (to, subject, body) are required")
+
+    # Ensure Gmail token belongs to the same logged-in user.
+    session_email = _get_user_email_by_id(session["user_id"])
+    token_email = await _get_google_email_from_access_token(req.gmail_access_token or "")
+    if token_email != session_email:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Gmail token account mismatch. Logged in as {session_email} but token is for {token_email}",
+        )
     
     # Send via MCP server
     await _send_email_via_mcp(req.to, req.subject, req.body, req.gmail_access_token)
@@ -397,11 +444,20 @@ async def translate_and_send(
     if not x_auth_token:
         raise HTTPException(status_code=401, detail="Login required")
 
-    _get_auth_session(x_auth_token)
+    session = _get_auth_session(x_auth_token)
 
     # Validate input
     if not req.to or not req.subject or not req.body:
         raise HTTPException(status_code=400, detail="Email fields (to, subject, body) are required")
+
+    # Ensure Gmail token belongs to the same logged-in user.
+    session_email = _get_user_email_by_id(session["user_id"])
+    token_email = await _get_google_email_from_access_token(req.gmail_access_token or "")
+    if token_email != session_email:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Gmail token account mismatch. Logged in as {session_email} but token is for {token_email}",
+        )
 
     # Step 1: Translate
     translate_req = TranslateRequest(text=req.body, from_lang=req.from_lang, to_lang=req.to_lang)
