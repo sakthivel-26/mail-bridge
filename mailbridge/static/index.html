@@ -207,6 +207,10 @@ function loginWithGoogle() {
   <div class="panel">
     <p class="panel-title">Compose</p>
     <div class="field">
+      <label>From (sender email)</label>
+      <input type="email" id="from" placeholder="your email" readonly/>
+    </div>
+    <div class="field">
       <label>To (recipient email)</label>
       <input type="email" id="to" placeholder="partner@china.com"/>
     </div>
@@ -698,17 +702,20 @@ async function onGoogleSignIn(response) {
   function setAuthUi(connected, email = "") {
     const state = document.getElementById("authState");
     const logoutBtn = document.getElementById("logoutBtn");
+    const fromField = document.getElementById("from");
     const gSigninDiv = document.querySelector(".g_id_signin");
 
     if (connected) {
       state.textContent = "Connected: " + email;
       state.style.color = "var(--success)";
       logoutBtn.disabled = false;
+      fromField.value = email;
       if (gSigninDiv) gSigninDiv.style.display = "none";
     } else {
       state.textContent = "Not connected";
       state.style.color = "var(--muted)";
       logoutBtn.disabled = true;
+      fromField.value = "";
       if (gSigninDiv) gSigninDiv.style.display = "block";
     }
   }
