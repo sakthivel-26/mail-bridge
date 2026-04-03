@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<link rel="manifest" href="/static/manifest.json">
+<link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#4CAF50">
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Sakthivel's MailBridge – Translate & Send</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="/static/config.js"></script>
+<script src="/config.js"></script>
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   :root{
@@ -196,6 +196,7 @@
       <div class="field">
         <label>Translate to</label>
         <select id="toLang">
+          <option value="ta" selected>Tamil</option>
           <option value="zh-CN">Chinese (Simplified)</option>
           <option value="zh-TW">Chinese (Traditional)</option>
           <option value="ja">Japanese</option>
@@ -290,7 +291,7 @@
 <script>
   // Register Service Worker for PWA
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/static/sw.js")
+    navigator.serviceWorker.register("/sw.js")
       .then(reg => console.log("✓ Service Worker registered"))
       .catch(err => console.error("✗ Service Worker registration failed:", err));
   }
@@ -305,6 +306,7 @@
   let gmailAccessToken = ""; // Reset before EVERY send to force fresh token request
 
   const LANG_NAMES = {
+    "ta":"Tamil",
     "zh-CN":"Chinese (Simplified)","zh-TW":"Chinese (Traditional)",
     "ja":"Japanese","ko":"Korean","es":"Spanish","fr":"French",
     "de":"German","ar":"Arabic","ru":"Russian","pt":"Portuguese",
@@ -421,7 +423,7 @@ async function onGoogleSignIn(response) {
   async function checkServer() {
     const el = document.getElementById("serverStatus");
     if (!API_FROM_CONFIG && window.location.hostname.includes("vercel.app")) {
-      el.textContent = "Set API_BASE_URL in static/config.js";
+      el.textContent = "Set API_BASE_URL in /config.js";
       el.style.background = "rgba(247,90,90,.1)";
       el.style.borderColor = "rgba(247,90,90,.25)";
       el.style.color = "var(--danger)";
@@ -738,7 +740,7 @@ window.addEventListener('appinstalled', () => {
 });
 
 if (!API_FROM_CONFIG && window.location.hostname.includes("vercel.app")) {
-  showToast("Set API_BASE_URL in static/config.js to your backend URL.", "warn");
+  showToast("Set API_BASE_URL in /config.js to your backend URL.", "warn");
 }
 
 

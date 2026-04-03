@@ -1,5 +1,6 @@
 """Gmail MCP Server (Multi-user version)"""
 
+import asyncio
 import base64
 from email.mime.text import MIMEText
 from typing import Any
@@ -66,32 +67,50 @@ async def send_email(req: SendEmailRequest) -> JSONResponse:
 
         payload = {"raw": raw_message}
 
+        transient_statuses = {429, 500, 502, 503, 504}
+        last_error_msg = "Unknown Gmail API error"
+        last_status_code = 500
+
         async with httpx.AsyncClient(timeout=20.0) as client:
-            response = await client.post(
-                GMAIL_SEND_URL,
-                json=payload,
-                headers=headers
-            )
+            for attempt in range(2):
+                try:
+                    response = await client.post(
+                        GMAIL_SEND_URL,
+                        json=payload,
+                        headers=headers,
+                    )
 
-        if response.status_code == 200:
-            data = response.json()
-            return JSONResponse({
-                "success": True,
-                "message": f"Email sent to {req.to}",
-                "message_id": data.get("id")
-            })
+                    if response.status_code == 200:
+                        data = response.json()
+                        return JSONResponse({
+                            "success": True,
+                            "message": f"Email sent to {req.to}",
+                            "message_id": data.get("id")
+                        })
 
-        # Gmail error
-        try:
-            error_data = response.json()
-            error_msg = error_data.get("error", {}).get("message", response.text)
-        except Exception:
-            error_msg = response.text
+                    try:
+                        error_data = response.json()
+                        error_msg = error_data.get("error", {}).get("message", response.text)
+                    except Exception:
+                        error_msg = response.text
 
-        status_code = response.status_code if 400 <= response.status_code < 600 else 500
+                    last_error_msg = error_msg
+                    last_status_code = response.status_code if 400 <= response.status_code < 600 else 500
+
+                    if response.status_code not in transient_statuses or attempt == 1:
+                        break
+
+                except httpx.RequestError as e:
+                    last_error_msg = str(e)
+                    last_status_code = 503
+                    if attempt == 1:
+                        break
+
+                await asyncio.sleep(1 + attempt)
+
         raise HTTPException(
-            status_code=status_code,
-            detail=f"Gmail API error: {error_msg}"
+            status_code=last_status_code,
+            detail=f"Gmail API error: {last_error_msg}"
         )
 
     except HTTPException:
