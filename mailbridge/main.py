@@ -379,7 +379,7 @@ async def send_email(req: SendEmailRequest, x_auth_token: str | None = Header(de
         raise HTTPException(status_code=400, detail="Email fields (to, subject, body) are required")
     
     # Send via MCP server
-    await _send_email_via_mcp(req.to, req.subject, req.body, req.user_access_token)
+    await _send_email_via_mcp(req.to, req.subject, req.body, req.gmail_access_token)
     
     return {"success": True, "message": f"Email sent to {req.to}"}
 
@@ -405,7 +405,7 @@ async def translate_and_send(
     translated_text = translation["translated_text"]
 
     # Step 2: Send via MCP
-    await _send_email_via_mcp(req.to, req.subject, translated_text, req.user_access_token)
+    await _send_email_via_mcp(req.to, req.subject, translated_text, req.gmail_access_token)
 
     return {
         "success": True,
