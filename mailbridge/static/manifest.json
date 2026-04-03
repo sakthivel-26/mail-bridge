@@ -2,21 +2,21 @@
   "name": "Sakthivel's MailBridge – Translate & Send Emails",
   "short_name": "Sakthivel's MailBridge",
   "description": "Sakthivel's personal email translation tool — instantly translate emails to 16+ languages and send with one click using Gmail API and Google Translate.",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0d0f14",
   "theme_color": "#4f8ef7",
   "orientation": "portrait-primary",
   "screenshots": [
     {
-      "src": "/static/icon-192.png",
+      "src": "./icon-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "/static/icon-512.png",
+      "src": "./icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
@@ -24,19 +24,19 @@
   ],
   "icons": [
     {
-      "src": "/static/icon-192.png",
+      "src": "./icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/static/icon-512.png",
+      "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/static/icon-192.png",
+      "src": "./icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
@@ -51,7 +51,7 @@
       "url": "/?action=compose",
       "icons": [
         {
-          "src": "/static/icon-192.png",
+          "src": "./icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -64,7 +64,7 @@
       "url": "/?action=log",
       "icons": [
         {
-          "src": "/static/icon-192.png",
+          "src": "./icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }

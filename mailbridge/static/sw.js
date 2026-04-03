@@ -1,8 +1,8 @@
-const CACHE_NAME = "mailbridge-v2";
+const CACHE_NAME = "mailbridge-v3-pwa";
 const ASSETS_TO_CACHE = [
-  "/",
-  "/static/index.html",
-  "/static/manifest.json",
+  "./",
+  "./index.html",
+  "./manifest.json",
 ];
 
 // Install event - cache essential assets
@@ -43,7 +43,7 @@ self.addEventListener("fetch", event => {
   }
 
   // Always fetch runtime config from network to avoid stale backend URLs.
-  if (event.request.url.includes("/static/config.js")) {
+  if (new URL(event.request.url).pathname.endsWith("/config.js")) {
     event.respondWith(fetch(event.request));
     return;
   }
@@ -67,8 +67,8 @@ self.addEventListener("fetch", event => {
           const responseToCache = response.clone();
 
           // Cache successful API and asset responses
-          if (event.request.url.includes("/static/") || 
-              event.request.url.includes("/health")) {
+          const pathname = new URL(event.request.url).pathname;
+          if (pathname.includes("/static/") || pathname.includes("/mailbridge/static/") || pathname.endsWith("/health")) {
             caches.open(CACHE_NAME).then(cache => {
               cache.put(event.request, responseToCache);
             });
@@ -79,7 +79,7 @@ self.addEventListener("fetch", event => {
         .catch(() => {
           // Return offline fallback if available
           if (event.request.destination === "document") {
-            return caches.match("/static/index.html");
+            return caches.match("./index.html");
           }
           return new Response("Offline - please check your connection", {
             status: 503,

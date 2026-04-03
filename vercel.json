@@ -1,0 +1,65 @@
+{
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/mailbridge/static/index.html"
+    },
+    {
+      "source": "/manifest.json",
+      "destination": "/mailbridge/static/manifest.json"
+    },
+    {
+      "source": "/config.js",
+      "destination": "/mailbridge/static/config.js"
+    },
+    {
+      "source": "/sw.js",
+      "destination": "/mailbridge/static/sw.js"
+    },
+    {
+      "source": "/icon-192.png",
+      "destination": "/mailbridge/static/icon-192.png"
+    },
+    {
+      "source": "/icon-512.png",
+      "destination": "/mailbridge/static/icon-512.png"
+    },
+    {
+      "source": "/static/:path*",
+      "destination": "/mailbridge/static/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/mailbridge/static/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/manifest.json",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
+      "source": "/config.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    }
+  ]
+}
