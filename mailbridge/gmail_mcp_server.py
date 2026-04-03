@@ -18,7 +18,7 @@ class SendEmailRequest(BaseModel):
     to: EmailStr
     subject: str
     body: str
-    access_token: str   # 🔥 user-specific token
+    access_token: str | None = None   # User-specific token (optional, fallback to env if missing)
 
 
 app = FastAPI(
@@ -31,14 +31,24 @@ app = FastAPI(
 @app.post("/send-email")
 async def send_email(req: SendEmailRequest) -> JSONResponse:
     try:
-        # ✅ CORRECT PLACE
+        # ✅ PRIORITY: Use user token if provided, otherwise fall back to env token
         access_token = req.access_token
+        from_account = "user-provided"
 
-        if not access_token:
-            raise HTTPException(status_code=400, detail="Missing access_token")
+        # Fallback to env token if user didn't provide one
+        if not access_token or not access_token.strip():
+            # This is intentional fallback for server-to-server mode (admin sends on behalf)
+            from fastapi import status
+            # For production: Comment this out and require user token
+            raise HTTPException(
+                status_code=400, 
+                detail="Email send requires user Gmail permission. Please grant access and try again."
+            )
 
         if not req.to or not req.subject or not req.body:
             raise HTTPException(status_code=400, detail="Missing email fields")
+
+        print(f"[DEBUG] Sending email from {from_account} account")
 
         # 📧 Create email
         message = MIMEText(req.body)

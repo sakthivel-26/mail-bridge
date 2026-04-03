@@ -339,7 +339,7 @@ function loginWithGoogle() {
   let sentItems = [];
   let authToken = localStorage.getItem("mailbridge_auth_token") || "";
   let authEmail = localStorage.getItem("mailbridge_auth_email") || "";
-  let gmailAccessToken = "";
+  let gmailAccessToken = ""; // Reset before EVERY send to force fresh token request
 
   const LANG_NAMES = {
     "zh-CN":"Chinese (Simplified)","zh-TW":"Chinese (Traditional)",
@@ -369,13 +369,12 @@ function loginWithGoogle() {
   }
 
   async function requestGmailAccessToken() {
-    if (gmailAccessToken && gmailAccessToken.trim()) {
-      return gmailAccessToken;
-    }
-
-    if (!window.google || !google.accounts || !google.accounts.oauth2) {
-      throw new Error("Google OAuth client not available");
-    }
+      // Always request fresh Gmail token for sending - never use cached token from login
+      // User might have denied consent during login but wants to grant it now
+    
+      if (!window.google || !google.accounts || !google.accounts.oauth2) {
+        throw new Error("Google OAuth client not available");
+      }
 
     const clientId = (window.GOOGLE_CLIENT_ID || APP_CONFIG.GOOGLE_CLIENT_ID || "").trim();
     if (!clientId) {
@@ -599,7 +598,10 @@ async function onGoogleSignIn(response) {
     btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Sending...';
     try {
       const gmailToken = await requestGmailAccessToken();
-      console.log("Gmail token obtained, sending email from:", authEmail);
+      if (!gmailToken || !gmailToken.trim()) {
+        throw new Error("Failed to obtain Gmail permission. Token is empty. Please check the browser console (F12) for errors.");
+      }
+      console.log("✓ Gmail token captured, token length:", gmailToken.length, "- sending email from:", authEmail);
       const res = await fetch(API + "/send-email", {
         method: "POST",
         headers: {"Content-Type":"application/json", ...authHeaders()},
@@ -642,7 +644,10 @@ async function onGoogleSignIn(response) {
 
     try {
       const gmailToken = await requestGmailAccessToken();
-      console.log("Gmail token obtained, translating and sending email from:", authEmail);
+      if (!gmailToken || !gmailToken.trim()) {
+        throw new Error("Failed to obtain Gmail permission. Token is empty. Please check the browser console (F12) for errors.");
+      }
+      console.log("✓ Gmail token captured, token length:", gmailToken.length, "- translating and sending email from:", authEmail);
       const res = await fetch(API + "/translate-and-send", {
         method: "POST",
         headers: {"Content-Type":"application/json", ...authHeaders()},

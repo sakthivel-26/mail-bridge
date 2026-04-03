@@ -168,6 +168,10 @@ async def _send_email_via_mcp(
         mcp_url = f"{MCP_SERVER_URL.rstrip('/')}/send-email"
     
     try:
+        # Debug: Log token status
+        token_status = "PROVIDED" if access_token and access_token.strip() else "MISSING/EMPTY"
+        print(f"[DEBUG API] Sending to MCP: to={to}, token_status={token_status}, mcp_url={mcp_url}")
+        
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 mcp_url,
