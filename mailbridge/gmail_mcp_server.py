@@ -88,8 +88,9 @@ async def send_email(req: SendEmailRequest) -> JSONResponse:
         except Exception:
             error_msg = response.text
 
+        status_code = response.status_code if 400 <= response.status_code < 600 else 500
         raise HTTPException(
-            status_code=500,
+            status_code=status_code,
             detail=f"Gmail API error: {error_msg}"
         )
 

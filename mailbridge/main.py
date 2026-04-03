@@ -223,8 +223,18 @@ async def _send_email_via_mcp(
             )
         
         if response.status_code != 200:
-            error_detail = response.json().get("detail", "Unknown error")
-            raise HTTPException(status_code=500, detail=f"MCP server error: {error_detail}")
+            try:
+                payload = response.json()
+            except ValueError:
+                payload = {"detail": response.text}
+
+            error_detail = payload.get("detail") or payload.get("message") or "Unknown error"
+
+            # Preserve client-side errors (4xx) so frontend sees the real cause.
+            if 400 <= response.status_code < 500:
+                raise HTTPException(status_code=response.status_code, detail=f"MCP error: {error_detail}")
+
+            raise HTTPException(status_code=502, detail=f"MCP server error: {error_detail}")
     
     except httpx.ConnectError:
         raise HTTPException(
@@ -235,6 +245,8 @@ async def _send_email_via_mcp(
                 "with: python gmail_mcp_server.py"
             )
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Email send failed: {str(e)}")
 
