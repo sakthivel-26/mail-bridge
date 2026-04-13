@@ -1,4 +1,4 @@
-const CACHE_NAME = "mailbridge-v3-pwa";
+const CACHE_NAME = "mailbridge-v4-pwa";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
@@ -39,6 +39,22 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   // Skip non-GET requests
   if (event.request.method !== "GET") {
+    return;
+  }
+
+  // Always prefer the network for page navigations so fresh deployments appear quickly.
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseToCache));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request).then(cached => cached || caches.match("./index.html")))
+    );
     return;
   }
 
