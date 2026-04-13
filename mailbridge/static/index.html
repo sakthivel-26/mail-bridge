@@ -189,8 +189,10 @@
           <option value="en">English</option>
           <option value="ta">Tamil</option>
           <option value="hi">Hindi</option>
+          <option value="mr">Marathi</option>
           <option value="te">Telugu</option>
           <option value="ml">Malayalam</option>
+          <option value="kn">Kannada</option>
         </select>
       </div>
       <div class="lang-arrow">→</div>
@@ -198,6 +200,11 @@
         <label>Translate to</label>
         <select id="toLang">
           <option value="ta" selected>Tamil</option>
+          <option value="hi">Hindi</option>
+          <option value="mr">Marathi</option>
+          <option value="ml">Malayalam</option>
+          <option value="kn">Kannada</option>
+          <option value="te">Telugu</option>
           <option value="zh-CN">Chinese (Simplified)</option>
           <option value="zh-TW">Chinese (Traditional)</option>
           <option value="ja">Japanese</option>
@@ -307,6 +314,7 @@
   let gmailAccessToken = ""; // Reset before EVERY send to force fresh token request
 
   const LANG_NAMES = {
+    "en":"English","hi":"Hindi","te":"Telugu","ml":"Malayalam","mr":"Marathi","kn":"Kannada",
     "ta":"Tamil",
     "zh-CN":"Chinese (Simplified)","zh-TW":"Chinese (Traditional)",
     "ja":"Japanese","ko":"Korean","es":"Spanish","fr":"French",
