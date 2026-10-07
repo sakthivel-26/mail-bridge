@@ -19,18 +19,6 @@ from google.auth.transport import requests
 from google.oauth2 import id_token
 from fastapi import FastAPI
 
-app = FastAPI()
-
-# ✅ ADD THIS
-@app.get("/")
-def home():
-    return {"message": "API is running"}
-
-# ✅ ADD THIS
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
 env_path = Path(__file__).parent / ".env"
 load_dotenv(dotenv_path=env_path, override=True)
 
@@ -47,6 +35,27 @@ app.add_middleware(
 # Serve frontend static files
 static_dir = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+# Serve PWA/static files at root paths (as expected by frontend HTML)
+@app.get("/manifest.json")
+async def serve_manifest():
+    return FileResponse(str(static_dir / "manifest.json"))
+
+@app.get("/config.js")
+async def serve_config():
+    return FileResponse(str(static_dir / "config.js"))
+
+@app.get("/sw.js")
+async def serve_sw():
+    return FileResponse(str(static_dir / "sw.js"))
+
+@app.get("/icon-192.png")
+async def serve_icon_192():
+    return FileResponse(str(static_dir / "icon-192.png"))
+
+@app.get("/icon-512.png")
+async def serve_icon_512():
+    return FileResponse(str(static_dir / "icon-512.png"))
 
 MYMEMORY_SAFE_CHUNK_CHARS = 450
 SESSION_TTL_SECONDS = 24 * 60 * 60  # 24 hours
